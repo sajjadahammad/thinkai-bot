@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "../../components/providers/AuthProvider";
-import { Mail, Lock, AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, AlertCircle, ArrowRight, Eye, EyeOff, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -21,6 +21,21 @@ const schema = yup.object().shape({
 });
 
 type LoginFormInputs = yup.InferType<typeof schema>;
+
+function getLoginErrorMessage(error: unknown): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error
+  ) {
+    const response = (error as { response?: { data?: { detail?: unknown } } }).response;
+    if (typeof response?.data?.detail === "string") {
+      return response.data.detail;
+    }
+  }
+
+  return "Invalid email or password. Please try again.";
+}
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -58,17 +73,25 @@ export default function LoginPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!backendError) return;
+
+    const timeout = window.setTimeout(() => {
+      setBackendError(null);
+    }, 4500);
+
+    return () => window.clearTimeout(timeout);
+  }, [backendError]);
+
   const onSubmit = async (data: LoginFormInputs) => {
     setBackendError(null);
     setIsSubmitting(true);
 
     try {
       await login(data.email, data.password);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setIsSubmitting(false);
-      setBackendError(
-        err.response?.data?.detail || "Invalid email or password. Please try again."
-      );
+      setBackendError(getLoginErrorMessage(err));
     }
   };
 
@@ -79,6 +102,34 @@ export default function LoginPage() {
     >
       {/* Background Glow */}
       <div className="bg-glow absolute w-[300px] h-[300px] bg-emerald-400/10 rounded-full blur-[80px]" />
+
+      {backendError && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed right-4 top-4 z-50 w-[calc(100%-2rem)] max-w-sm rounded-xl border border-red-500/30 bg-[#12090b]/95 p-4 text-red-100 shadow-2xl shadow-red-950/30 backdrop-blur"
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-500/25 bg-red-950/60 text-red-300">
+              <AlertCircle className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-red-100">Login failed</p>
+              <p className="mt-1 text-xs leading-relaxed text-red-200/80">
+                {backendError}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBackendError(null)}
+              className="rounded-md p-1 text-red-200/60 transition-colors hover:bg-red-500/10 hover:text-red-100"
+              aria-label="Dismiss login error"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-md w-full z-10">
         <form
@@ -179,7 +230,7 @@ export default function LoginPage() {
 
           {/* Switch page link */}
           <div className="text-center text-xs text-zinc-500 font-light">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-emerald-400 hover:underline">
               Create an account
             </Link>
