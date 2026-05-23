@@ -73,12 +73,12 @@ class MockChatModel(BaseChatModel):
 def get_llm(provider: str, model_name: str) -> BaseChatModel:
     """
     Returns the appropriate LangChain ChatModel based on provider and model.
-    Falls back to MockChatModel if API keys are missing.
+    Raises ValueError if API keys are missing for live providers.
     """
     provider = provider.lower()
     
     if provider == "mistral":
-        api_key = settings.MISTRAL_API_KEY
+        api_key = settings.MISTRAL_API_KEY.strip() if settings.MISTRAL_API_KEY else ""
         if api_key:
             return ChatMistralAI(
                 model=model_name or "mistral-large-latest",
@@ -86,11 +86,10 @@ def get_llm(provider: str, model_name: str) -> BaseChatModel:
                 streaming=True
             )
         else:
-            print("[Warning] MISTRAL_API_KEY is not set. Falling back to MockChatModel.")
-            return MockChatModel(model_name=f"Mistral Mock ({model_name})")
+            raise ValueError("MISTRAL_API_KEY is not configured in the backend .env file.")
             
     elif provider == "gemini":
-        api_key = settings.GEMINI_API_KEY
+        api_key = settings.GEMINI_API_KEY.strip() if settings.GEMINI_API_KEY else ""
         if api_key:
             try:
                 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -100,14 +99,12 @@ def get_llm(provider: str, model_name: str) -> BaseChatModel:
                     streaming=True
                 )
             except ImportError:
-                print("[Warning] langchain-google-genai not installed. Falling back to Mock.")
-                return MockChatModel(model_name=f"Gemini Mock ({model_name})")
+                raise ImportError("langchain-google-genai package is not installed. Please run `pip install langchain-google-genai`.")
         else:
-            print("[Warning] GEMINI_API_KEY is not set. Falling back to MockChatModel.")
-            return MockChatModel(model_name=f"Gemini Mock ({model_name})")
+            raise ValueError("GEMINI_API_KEY is not configured in the backend .env file.")
             
     else:
-        return MockChatModel(model_name=f"Mock ({model_name})")
+        return MockChatModel(model_name=model_name or "mock-model")
 
 
 # ==========================================

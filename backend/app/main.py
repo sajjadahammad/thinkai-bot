@@ -1,9 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import logging
 
 from app.core.config import settings
 from app.core.database import init_db
 from app.api.v1.router import api_router
+from sqlalchemy.future import select
+from app.models.chat import User
+from app.core.security import get_password_hash
+from app.core.database import AsyncSessionLocal
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -20,10 +26,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from sqlalchemy.future import select
-from app.models.chat import User
-from app.core.security import get_password_hash
-from app.core.database import AsyncSessionLocal
+logger = logging.getLogger("uvicorn.error")
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal Server Error: {str(exc)}"},
+    )
+
+
+
 
 async def init_admin_user():
     async with AsyncSessionLocal() as db:
