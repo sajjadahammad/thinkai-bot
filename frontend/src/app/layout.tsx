@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Syne } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -34,7 +35,10 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[#070708] text-zinc-100">
         <QueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <Analytics />
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>
