@@ -8,6 +8,8 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
     model: str = "mock-model"
     provider: str = "mock"
+    tone: Optional[str] = None
+    attachments: Optional[List[dict]] = None
 
 class LogPayload(BaseModel):
     conversation_id: Optional[str] = None

@@ -215,6 +215,7 @@ export function useChatSession() {
           conversation_id: activeConversationId,
           model: selectedModel.value,
           provider: selectedModel.provider,
+          tone: selectedTone,
           attachments: attachedFiles
             .filter((att) => !att.uploading)
             .map((att) => ({

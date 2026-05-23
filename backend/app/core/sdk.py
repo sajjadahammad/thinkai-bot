@@ -19,7 +19,7 @@ class InferenceLoggerSDK:
     def __init__(self, ingestion_url: Optional[str] = None):
         # Read ingestion endpoint from config settings
         self.ingestion_url = ingestion_url or settings.INGESTION_URL
-        self.client = httpx.AsyncClient(timeout=3.0)
+        self.client = httpx.AsyncClient(timeout=3.0, follow_redirects=True)
         self.background_tasks = set()
         logger.info(f"InferenceLoggerSDK initialized targeting {self.ingestion_url}")
 

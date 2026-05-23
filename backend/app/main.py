@@ -8,6 +8,7 @@ from app.core.database import init_db
 from app.api.v1.router import api_router
 from sqlalchemy.future import select
 from app.models.chat import User
+from app.models.document import DocumentChunk
 from app.core.security import get_password_hash
 from app.core.database import AsyncSessionLocal
 
@@ -17,6 +18,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
+from fastapi.staticfiles import StaticFiles
+import os
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
@@ -25,6 +29,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+os.makedirs("app/uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="app/uploads"), name="uploads")
 
 logger = logging.getLogger("uvicorn.error")
 

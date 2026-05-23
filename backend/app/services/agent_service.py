@@ -28,9 +28,21 @@ class MockChatModel(BaseChatModel):
         run_manager: Optional[Any] = None,
         **kwargs: Any,
     ) -> ChatResult:
+        from langchain_core.messages import SystemMessage
         user_msg = messages[-1].content if messages else ""
+        system_msg = next((msg.content for msg in messages if isinstance(msg, SystemMessage)), "")
+        tone_info = ""
+        if "formal" in system_msg.lower():
+            tone_info = " [Tone: Formal]"
+        elif "creative" in system_msg.lower():
+            tone_info = " [Tone: Creative]"
+        elif "precise" in system_msg.lower():
+            tone_info = " [Tone: Precise]"
+        elif "concise" in system_msg.lower():
+            tone_info = " [Tone: Concise]"
+
         content = (
-            f"Hello! I am a simulated response from {self.model_name}.\n\n"
+            f"Hello! I am a simulated response from {self.model_name}{tone_info}.\n\n"
             f"You said: \"{user_msg}\"\n\n"
             "This mock response allows you to verify that the frontend chat box, "
             "streaming UI, SDK logger, and database ingestion pipeline are fully functioning. "
@@ -46,9 +58,21 @@ class MockChatModel(BaseChatModel):
         run_manager: Optional[Any] = None,
         **kwargs: Any,
     ) -> Iterator[ChatGenerationChunk]:
+        from langchain_core.messages import SystemMessage
         user_msg = messages[-1].content if messages else ""
+        system_msg = next((msg.content for msg in messages if isinstance(msg, SystemMessage)), "")
+        tone_info = ""
+        if "formal" in system_msg.lower():
+            tone_info = " [Tone: Formal]"
+        elif "creative" in system_msg.lower():
+            tone_info = " [Tone: Creative]"
+        elif "precise" in system_msg.lower():
+            tone_info = " [Tone: Precise]"
+        elif "concise" in system_msg.lower():
+            tone_info = " [Tone: Concise]"
+
         response_text = (
-            f"Hello! This is a streaming response from the simulated {self.model_name}.\n\n"
+            f"Hello! This is a streaming response from the simulated {self.model_name}{tone_info}.\n\n"
             f"You wrote: \"{user_msg}\"\n\n"
             "The system is capturing token metrics, measuring latency, and redacting "
             "PII in real-time. If you enter an email (like user@test.com) or phone number "

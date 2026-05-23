@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     
     # Ingestion URL (SDK target)
-    INGESTION_URL: str = "http://localhost:8000/api/v1/logs"
+    INGESTION_URL: str = "http://localhost:8000/api/v1/logs/"
 
     # JWT Settings
     JWT_SECRET_KEY: str = "super_secret_key_change_me_in_production_1234567890"
