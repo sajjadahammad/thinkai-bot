@@ -295,6 +295,10 @@ async def chat_stream(
         system_instruction = "You are an intelligent assistant.\n\n" + "\n\n".join(system_parts)
         langchain_messages.insert(0, SystemMessage(content=system_instruction))
 
+    # Streaming saves the assistant response in a separate session. Commit the
+    # conversation and user message first so those rows are visible there.
+    await db.commit()
+
     async def sse_generator() -> AsyncIterator[str]:
         assistant_msg_id = uuid.uuid4()
         full_completion = []
