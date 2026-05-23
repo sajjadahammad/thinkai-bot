@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Image as ImageIcon, Paperclip, ChevronDown, Send, Square } from "lucide-react";
+import { Image as ImageIcon, Paperclip, ChevronDown, Send, Square, X, FileText, Loader2 } from "lucide-react";
 
 interface ModelOption {
   name: string;
@@ -19,6 +19,9 @@ interface ChatInputProps {
   selectedTone: string;
   setSelectedTone: (t: string) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  attachedFiles: { id: string; name: string; type: "image" | "pdf"; url?: string; uploading: boolean }[];
+  onFileUpload: (file: File) => void;
+  onRemoveAttachment: (id: string) => void;
 }
 
 export function ChatInput({
@@ -32,11 +35,18 @@ export function ChatInput({
   selectedTone,
   setSelectedTone,
   textareaRef,
+  attachedFiles,
+  onFileUpload,
+  onRemoveAttachment,
 }: ChatInputProps) {
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [showToneDropdown, setShowToneDropdown] = useState(false);
   const modelDropdownRef = useRef<HTMLDivElement | null>(null);
   const toneDropdownRef = useRef<HTMLDivElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const isUploading = attachedFiles.some((f) => f.uploading);
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -77,9 +87,33 @@ export function ChatInput({
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onFileUpload(file);
+      e.target.value = ""; // Reset so same file can be uploaded again
+    }
+  };
+
   return (
     <div className="p-4 bg-gradient-to-t from-[#070708] via-[#070708]/95 to-transparent border-t border-zinc-950/20 sticky bottom-0 z-20 flex justify-center w-full">
       <div className="max-w-3xl w-full flex flex-col space-y-2">
+        {/* Hidden inputs for uploading */}
+        <input
+          type="file"
+          ref={imageInputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          className="hidden"
+        />
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept=".pdf"
+          className="hidden"
+        />
+
         {/* Input Box Card container */}
         <form
           onSubmit={(e) => {
@@ -88,6 +122,39 @@ export function ChatInput({
           }}
           className="bg-[#0c0c0e] border border-zinc-900 rounded-2xl flex flex-col p-3 shadow-2xl relative"
         >
+          {/* File attachment preview chips */}
+          {attachedFiles && attachedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-2 pb-2">
+              {attachedFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900/60 border border-zinc-800/40 text-xs text-zinc-350 relative group animate-fade-in"
+                >
+                  {file.type === "image" ? (
+                    <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <FileText className="w-3.5 h-3.5 text-sky-400" />
+                  )}
+                  <span className="max-w-[120px] truncate text-[11px] font-light text-zinc-300">
+                    {file.name}
+                  </span>
+                  {file.uploading ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-zinc-550" />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveAttachment(file.id)}
+                      className="p-0.5 hover:bg-zinc-850 rounded text-zinc-500 hover:text-zinc-350 transition-colors"
+                      title="Remove file"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           <textarea
             ref={textareaRef}
             value={input}
@@ -185,15 +252,17 @@ export function ChatInput({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
-                title="Upload Image"
+                onClick={() => imageInputRef.current?.click()}
+                className="p-1.5 text-zinc-500 hover:text-zinc-350 transition-colors"
+                title="Upload Image (Vision)"
               >
                 <ImageIcon className="w-4 h-4" />
               </button>
               <button
                 type="button"
-                className="p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
-                title="Attach File"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-1.5 text-zinc-500 hover:text-zinc-350 transition-colors"
+                title="Attach PDF (RAG)"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
@@ -210,11 +279,15 @@ export function ChatInput({
               ) : (
                 <button
                   type="submit"
-                  disabled={!input.trim()}
-                  className="p-2 bg-emerald-950 hover:bg-emerald-900 border border-emerald-900/60 text-emerald-400 rounded-lg disabled:opacity-40 disabled:hover:bg-emerald-950 transition-all"
+                  disabled={(!input.trim() && attachedFiles.length === 0) || isUploading}
+                  className="p-2 bg-emerald-950 hover:bg-emerald-900 border border-emerald-900/60 text-emerald-400 rounded-lg disabled:opacity-40 disabled:hover:bg-emerald-950 transition-all flex items-center justify-center min-w-[32px] min-h-[32px]"
                   title="Send message"
                 >
-                  <Send className="w-3.5 h-3.5 fill-emerald-400" />
+                  {isUploading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                  ) : (
+                    <Send className="w-3.5 h-3.5 fill-emerald-400" />
+                  )}
                 </button>
               )}
             </div>

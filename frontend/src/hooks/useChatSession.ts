@@ -33,6 +33,77 @@ export function useChatSession() {
 
   const [input, setInput] = useState("");
   const [promptCards, setPromptCards] = useState(defaultPrompts);
+  const [attachedFiles, setAttachedFiles] = useState<{
+    id: string;
+    name: string;
+    type: "image" | "pdf";
+    url?: string;
+    uploading: boolean;
+  }[]>([]);
+
+  const handleFileUpload = async (file: File) => {
+    const isPdf = file.name.toLowerCase().endsWith(".pdf");
+    const isImage = file.type.startsWith("image/");
+    if (!isPdf && !isImage) {
+      alert("Unsupported file type. Only PDF and images (PNG/JPG/JPEG/GIF/WEBP) are supported.");
+      return;
+    }
+
+    const tempId = Math.random().toString();
+    const newAttachment = {
+      id: tempId,
+      name: file.name,
+      type: (isPdf ? "pdf" as const : "image" as const),
+      uploading: true,
+    };
+
+    setAttachedFiles((prev) => [...prev, newAttachment]);
+
+    try {
+      const token = getAccessToken();
+      const formData = new FormData();
+      formData.append("file", file);
+      if (activeConversationId) {
+        formData.append("conversation_id", activeConversationId);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/chat/upload`, {
+        method: "POST",
+        headers: {
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Upload failed");
+      }
+
+      const data = await response.json();
+      
+      // Update activeConversationId if the backend generated one (e.g. upload on new chat)
+      if (!activeConversationId && data.conversation_id) {
+        setActiveConversationId(data.conversation_id);
+      }
+
+      setAttachedFiles((prev) =>
+        prev.map((att) =>
+          att.id === tempId
+            ? { ...att, uploading: false, url: data.url || "" }
+            : att
+        )
+      );
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      alert(`Failed to upload file: ${err.message || "Unknown error"}`);
+      setAttachedFiles((prev) => prev.filter((att) => att.id !== tempId));
+    }
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachedFiles((prev) => prev.filter((att) => att.id !== id));
+  };
 
   // Refs
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -109,9 +180,15 @@ export function useChatSession() {
 
   // SSE Stream generator client handler
   const handleSendMessage = async () => {
-    if (!input.trim() || isGenerating) return;
+    const isUploading = attachedFiles.some((f) => f.uploading);
+    if (isUploading) return;
 
-    const userQuery = input.trim();
+    if ((!input.trim() && attachedFiles.length === 0) || isGenerating) return;
+
+    let userQuery = input.trim();
+    if (!userQuery && attachedFiles.length > 0) {
+      userQuery = "Please analyze the uploaded document.";
+    }
     setInput("");
 
     const tempUserMsgId = Math.random().toString();
@@ -138,9 +215,19 @@ export function useChatSession() {
           conversation_id: activeConversationId,
           model: selectedModel.value,
           provider: selectedModel.provider,
+          attachments: attachedFiles
+            .filter((att) => !att.uploading)
+            .map((att) => ({
+              type: att.type,
+              name: att.name,
+              url: att.url,
+            })),
         }),
         signal: abortController.signal,
       });
+
+      // Clear attachments on submit
+      setAttachedFiles([]);
 
       if (!response.ok) {
         throw new Error("Streaming connection failure");
@@ -241,5 +328,8 @@ export function useChatSession() {
     shufflePrompts,
     handleSendMessage,
     cancelGeneration,
+    attachedFiles,
+    handleFileUpload,
+    removeAttachment,
   };
 }

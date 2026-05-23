@@ -38,6 +38,9 @@ export default function Home() {
     shufflePrompts,
     handleSendMessage,
     cancelGeneration,
+    attachedFiles,
+    handleFileUpload,
+    removeAttachment,
   } = useChatSession();
 
   return (
@@ -134,6 +137,9 @@ export default function Home() {
           selectedTone={selectedTone}
           setSelectedTone={setSelectedTone}
           textareaRef={textareaRef}
+          attachedFiles={attachedFiles}
+          onFileUpload={handleFileUpload}
+          onRemoveAttachment={removeAttachment}
         />
       </div>
     </div>

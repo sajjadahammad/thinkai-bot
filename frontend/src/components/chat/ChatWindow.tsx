@@ -1,6 +1,10 @@
 import React from "react";
 import { User, Bot } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 import { Message } from "../../lib/api";
+import "../../styles/markdown.css";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -33,15 +37,26 @@ export function ChatWindow({ messages, isGenerating, messagesEndRef }: ChatWindo
               {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
             </div>
 
-            {/* Content text */}
-            <div className="space-y-1 overflow-hidden">
+            {/* Content */}
+            <div className="space-y-1 overflow-hidden min-w-0 flex-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                 {isUser ? "User Query" : "OliveBot Response"}
               </span>
-              <p className="text-zinc-200 text-xs md:text-sm font-light leading-relaxed whitespace-pre-wrap">
-                {m.content ||
-                  (isGenerating && <span className="inline-block w-1.5 h-3.5 bg-emerald-400 animate-pulse" />)}
-              </p>
+              {isUser ? (
+                <p className="text-zinc-200 text-xs md:text-sm font-light leading-relaxed whitespace-pre-wrap">
+                  {m.content}
+                </p>
+              ) : m.content ? (
+                <div className="prose-chat">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                isGenerating && (
+                  <span className="inline-block w-1.5 h-3.5 bg-emerald-400 animate-pulse" />
+                )
+              )}
             </div>
           </div>
         );
@@ -51,3 +66,4 @@ export function ChatWindow({ messages, isGenerating, messagesEndRef }: ChatWindo
   );
 }
 export default ChatWindow;
+
