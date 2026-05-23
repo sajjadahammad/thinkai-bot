@@ -1,3 +1,5 @@
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -12,7 +14,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     
     # Ingestion URL (SDK target)
-    INGESTION_URL: str = "http://localhost:8000/api/v1/logs/"
+    INGESTION_URL: str = ""
 
     # JWT Settings
     JWT_SECRET_KEY: str = "super_secret_key_change_me_in_production_1234567890"
@@ -21,8 +23,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Admin Credentials
-    ADMIN_EMAIL: str = "admin@olivebot.ai"
-    ADMIN_PASSWORD: str = "adminpassword123"
+    ADMIN_EMAIL: str = ""
+    ADMIN_PASSWORD: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -37,3 +39,10 @@ settings = Settings()
 if settings.DATABASE_URL.startswith("postgresql://"):
     settings.DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+if not settings.INGESTION_URL:
+    render_url = os.getenv("RENDER_EXTERNAL_URL")
+    if render_url:
+        settings.INGESTION_URL = f"{render_url.rstrip('/')}{settings.API_V1_STR}/logs/"
+    else:
+        port = os.getenv("PORT", "8000")
+        settings.INGESTION_URL = f"http://127.0.0.1:{port}{settings.API_V1_STR}/logs/"
