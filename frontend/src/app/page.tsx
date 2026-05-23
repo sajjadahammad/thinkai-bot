@@ -1,65 +1,141 @@
-import Image from "next/image";
+"use client";
+
+import React from "react";
+import { useRouter } from "next/navigation";
+import { Menu } from "lucide-react";
+
+import { Sidebar } from "../components/chat/Sidebar";
+import { PromptGrid } from "../components/chat/PromptGrid";
+import { ChatWindow } from "../components/chat/ChatWindow";
+import { ChatInput } from "../components/chat/ChatInput";
+import { useAuth } from "../components/providers/AuthProvider";
+import { useChatSession } from "../hooks/useChatSession";
 
 export default function Home() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const {
+    sidebarOpen,
+    setSidebarOpen,
+    activeConversationId,
+    selectedModel,
+    setSelectedModel,
+    selectedTone,
+    setSelectedTone,
+    messages,
+    isGenerating,
+    input,
+    setInput,
+    promptCards,
+    messagesEndRef,
+    textareaRef,
+    conversations,
+    startNewChat,
+    selectConversation,
+    deleteConversation,
+    handlePromptCardClick,
+    shufflePrompts,
+    handleSendMessage,
+    cancelGeneration,
+  } = useChatSession();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="flex h-screen bg-[#070708] text-zinc-100 overflow-hidden font-sans relative">
+      {/* 1. Left Drawer Sidebar (Chat History) */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        conversations={conversations}
+        activeConversationId={activeConversationId}
+        onSelectConversation={selectConversation}
+        onDeleteConversation={deleteConversation}
+        onStartNewChat={startNewChat}
+        onOpenDashboard={() => router.push("/dashboard")}
+      />
+
+      {/* 2. Main Page Layout */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+        {/* Navigation Header */}
+        <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-900/50 bg-[#070708]/80 backdrop-blur-md z-30">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 text-zinc-400 hover:text-zinc-200 transition-colors bg-zinc-900/60 border border-zinc-850 rounded-lg flex items-center gap-2 group"
+          >
+            <Menu className="w-4 h-4" />
+            <div className="flex items-center gap-1.5 font-semibold text-zinc-200 text-sm">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+              OliveBot
+            </div>
+          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={logout}
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors border border-zinc-900 rounded-lg px-2.5 py-1.5 bg-zinc-900/40 hover:bg-zinc-900"
+            >
+              Logout
+            </button>
+            <div className="w-8 h-8 rounded-full bg-zinc-850 border border-zinc-700/60 flex items-center justify-center text-zinc-200 text-xs font-semibold select-none">
+              {user?.full_name?.[0]?.toUpperCase() || "U"}
+            </div>
+          </div>
+        </header>
+
+        {/* Central Chat Thread / Landing State */}
+        <div className="flex-1 overflow-y-auto flex flex-col items-center px-4 py-8 relative">
+          {messages.length === 0 ? (
+            /* landing screen */
+            <div className="flex-1 max-w-3xl w-full flex flex-col items-center justify-center space-y-8 my-auto relative z-10">
+              <div className="relative flex items-center justify-center">
+                <div className="absolute w-[200px] h-[200px] bg-emerald-400/10 rounded-full blur-[60px] animate-pulse" />
+                <div
+                  className="w-16 h-16 rounded-full blur-[2px] shadow-[0_0_50px_15px_rgba(52,211,153,0.5)] border border-emerald-300/30"
+                  style={{
+                    background:
+                      "radial-gradient(circle, rgba(16,185,129,1) 0%, rgba(5,150,105,0.75) 45%, rgba(4,120,87,0.2) 100%)",
+                  }}
+                />
+              </div>
+
+              <div className="text-center space-y-2">
+                <h1 className="text-3xl md:text-4xl font-bold font-heading tracking-tight text-white">
+                  Good evening, {user?.full_name || "User"}
+                </h1>
+                <h2 className="text-3xl md:text-4xl font-bold font-heading tracking-tight text-white/95">
+                  Can I help you with anything?
+                </h2>
+                <p className="text-zinc-500 text-xs md:text-sm max-w-md mx-auto font-light">
+                  Choose a prompt below or write your own to start chatting with OliveBot
+                </p>
+              </div>
+
+              <PromptGrid
+                promptCards={promptCards}
+                onPromptClick={handlePromptCardClick}
+                onShuffle={shufflePrompts}
+              />
+            </div>
+          ) : (
+            /* thread chat */
+            <ChatWindow messages={messages} isGenerating={isGenerating} messagesEndRef={messagesEndRef} />
+          )}
+        </div>
+
+        {/* Chat input box form */}
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          isGenerating={isGenerating}
+          onSend={handleSendMessage}
+          onCancel={cancelGeneration}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          selectedTone={selectedTone}
+          setSelectedTone={setSelectedTone}
+          textareaRef={textareaRef}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
