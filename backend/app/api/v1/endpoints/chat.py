@@ -4,7 +4,7 @@ import asyncio
 import os
 import base64
 import mimetypes
-from typing import AsyncIterator, List, Optional
+from typing import Any, AsyncIterator, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
@@ -45,6 +45,31 @@ def is_simple_greeting(message: str) -> bool:
         "good afternoon",
         "good evening",
     }
+
+
+def extract_text_content(content: Any) -> str:
+    """Flatten provider-specific streamed content parts into displayable text."""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, (list, tuple)):
+        return "".join(extract_text_content(item) for item in content)
+    if isinstance(content, dict):
+        if "text" in content:
+            return extract_text_content(content["text"])
+        if "content" in content:
+            return extract_text_content(content["content"])
+        if "parts" in content:
+            return extract_text_content(content["parts"])
+        return ""
+    if hasattr(content, "model_dump"):
+        return extract_text_content(content.model_dump())
+    if hasattr(content, "text"):
+        return extract_text_content(content.text)
+    if hasattr(content, "content"):
+        return extract_text_content(content.content)
+    return str(content)
 
 
 @router.post("/upload")
@@ -288,7 +313,9 @@ async def chat_stream(
                 llm = get_llm(req.provider, model_name)
                 
                 async for chunk in llm.astream(langchain_messages):
-                    content_chunk = chunk.content
+                    content_chunk = extract_text_content(chunk.content)
+                    if not content_chunk:
+                        continue
                     full_completion.append(content_chunk)
                     yield f"data: {json.dumps({'type': 'chunk', 'content': content_chunk})}\n\n"
                     await asyncio.sleep(0.005)

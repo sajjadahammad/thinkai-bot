@@ -14,6 +14,21 @@ const defaultPrompts = [
   "Summarize key points",
 ];
 
+function getChunkContent(content: unknown): string {
+  if (content == null) return "";
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return content.map(getChunkContent).join("");
+  if (typeof content === "object") {
+    const part = content as { text?: unknown; content?: unknown; parts?: unknown };
+    return getChunkContent(part.text ?? part.content ?? part.parts);
+  }
+  return String(content);
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export function useChatSession() {
   const {
     sidebarOpen,
@@ -94,9 +109,9 @@ export function useChatSession() {
             : att
         )
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Upload error:", err);
-      alert(`Failed to upload file: ${err.message || "Unknown error"}`);
+      alert(`Failed to upload file: ${getErrorMessage(err, "Unknown error")}`);
       setAttachedFiles((prev) => prev.filter((att) => att.id !== tempId));
     }
   };
@@ -119,7 +134,7 @@ export function useChatSession() {
   useEffect(() => {
     if (activeConversationId && fetchedMessages) {
       setMessages(
-        fetchedMessages.map((m: any) => ({
+        fetchedMessages.map((m) => ({
           id: m.id,
           role: m.role,
           content: m.content,
@@ -254,29 +269,36 @@ export function useChatSession() {
               break;
             }
 
+            let dataObj: {
+              type?: string;
+              conversation_id?: string;
+              content?: unknown;
+              error?: unknown;
+            };
             try {
-              const dataObj = JSON.parse(dataStr);
-              if (dataObj.type === "meta") {
-                if (!activeConversationId) {
-                  setActiveConversationId(dataObj.conversation_id);
-                  refetchConversations();
-                }
-              } else if (dataObj.type === "chunk") {
-                assistantResponse += dataObj.content;
-                setMessages((prev) =>
-                  prev.map((m) => (m.id === assistantMsgId ? { ...m, content: assistantResponse } : m))
-                );
-              } else if (dataObj.type === "error") {
-                throw new Error(dataObj.error);
+              dataObj = JSON.parse(dataStr);
+            } catch {
+              continue;
+            }
+
+            if (dataObj.type === "meta") {
+              if (!activeConversationId && dataObj.conversation_id) {
+                setActiveConversationId(dataObj.conversation_id);
+                refetchConversations();
               }
-            } catch (jsonErr) {
-              // Ignore invalid lines
+            } else if (dataObj.type === "chunk") {
+              assistantResponse += getChunkContent(dataObj.content);
+              setMessages((prev) =>
+                prev.map((m) => (m.id === assistantMsgId ? { ...m, content: assistantResponse } : m))
+              );
+            } else if (dataObj.type === "error") {
+              throw new Error(getChunkContent(dataObj.error) || "Streaming error");
             }
           }
         }
       }
-    } catch (err: any) {
-      if (err.name === "AbortError") {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
         console.log("Stream aborted.");
       } else {
         console.error("Stream generation error:", err);
@@ -285,7 +307,7 @@ export function useChatSession() {
             m.id === assistantMsgId
               ? {
                   ...m,
-                  content: `Error generating response: ${err.message || "Please check server status."}`,
+                  content: `Error generating response: ${getErrorMessage(err, "Please check server status.")}`,
                 }
               : m
           )

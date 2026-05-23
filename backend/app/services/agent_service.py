@@ -94,14 +94,10 @@ class MockChatModel(BaseChatModel):
 # ==========================================
 # 2. LLM Provider Resolver
 # ==========================================
-GEMINI_MODEL_ALIASES = {
-    "gemini-2.5-pro-preview-06-05": "gemini-2.5-pro",
-}
+GEMINI_DEFAULT_MODEL = "gemini-3.1-flash-lite"
 
 
 def normalize_model_name(provider: str, model_name: str) -> str:
-    if provider.lower() == "gemini":
-        return GEMINI_MODEL_ALIASES.get(model_name, model_name)
     return model_name
 
 
@@ -130,7 +126,7 @@ def get_llm(provider: str, model_name: str) -> BaseChatModel:
             try:
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 return ChatGoogleGenerativeAI(
-                    model=model_name or "gemini-2.5-flash",
+                    model=model_name or GEMINI_DEFAULT_MODEL,
                     google_api_key=api_key,
                     streaming=True
                 )
