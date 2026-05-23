@@ -94,7 +94,7 @@ def get_llm(provider: str, model_name: str) -> BaseChatModel:
             try:
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 return ChatGoogleGenerativeAI(
-                    model=model_name or "gemini-1.5-flash",
+                    model=model_name or "gemini-2.5-flash",
                     google_api_key=api_key,
                     streaming=True
                 )
