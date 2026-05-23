@@ -17,7 +17,7 @@ from app.api.dependencies import get_db, get_current_user
 from app.schemas.chat import ChatRequest
 from app.models.chat import Conversation, Message, User
 from app.services.pii_service import PIIRedactor
-from app.services.agent_service import get_llm
+from app.services.agent_service import get_llm, normalize_model_name
 from app.core.database import AsyncSessionLocal
 from app.core.sdk import sdk_logger
 from app.services import document_service
@@ -31,6 +31,20 @@ def estimate_tokens(text: str, model_name: str = "gpt-3.5-turbo") -> int:
         return len(encoding.encode(text))
     except Exception:
         return max(1, int(len(text) / 4))
+
+
+def is_simple_greeting(message: str) -> bool:
+    normalized = message.strip().lower().strip("!.?, ")
+    return normalized in {
+        "hello",
+        "hi",
+        "hey",
+        "hhello",
+        "helo",
+        "good morning",
+        "good afternoon",
+        "good evening",
+    }
 
 
 @router.post("/upload")
@@ -157,6 +171,7 @@ async def chat_stream(
 
     # 2. Redact PII in user message
     redacted_prompt = PIIRedactor.redact(req.message)
+    model_name = normalize_model_name(req.provider, req.model)
 
     # 3. Store User message in DB
     user_msg_id = uuid.uuid4()
@@ -215,7 +230,13 @@ async def chat_stream(
         langchain_messages.append(HumanMessage(content=req.message))
 
     # 6. Build system instruction (incorporating requested tone and RAG context)
-    system_parts = []
+    system_parts = [
+        (
+            "You are OliveBot, a helpful assistant. For simple greetings or small talk, "
+            "reply naturally and briefly. Do not ask for documents unless the user asks "
+            "about a document or an uploaded document is directly relevant."
+        )
+    ]
     
     # Add tone instructions if specified
     if req.tone:
@@ -230,7 +251,9 @@ async def chat_stream(
             system_parts.append("Respond in a very concise, direct, and brief tone. Answer the question as directly as possible and minimize explanation length.")
 
     # Retrieve relevant document chunks (RAG) if available
-    relevant_chunks = await document_service.retrieve_relevant_chunks(db, uuid.UUID(conv_id), req.message, top_k=3)
+    relevant_chunks = []
+    if not is_simple_greeting(req.message):
+        relevant_chunks = await document_service.retrieve_relevant_chunks(db, uuid.UUID(conv_id), req.message, top_k=3)
     if relevant_chunks:
         context_text = "\n\n".join([
             f"[Source: {c.filename}, Chunk {c.chunk_index}]:\n{c.chunk_text}"
@@ -255,14 +278,14 @@ async def chat_stream(
             yield f"data: {json.dumps({'type': 'meta', 'conversation_id': conv_id, 'message_id': str(assistant_msg_id)})}\n\n"
             
             async with sdk_logger.log_inference(
-                model=req.model,
+                model=model_name,
                 provider=req.provider,
                 input_text=req.message,
                 conversation_id=conv_id,
                 message_id=str(assistant_msg_id)
             ) as tracker:
                 
-                llm = get_llm(req.provider, req.model)
+                llm = get_llm(req.provider, model_name)
                 
                 async for chunk in llm.astream(langchain_messages):
                     content_chunk = chunk.content
@@ -275,8 +298,8 @@ async def chat_stream(
                 
                 tracker.set_output(final_text)
                 tracker.set_tokens(
-                    prompt_tokens=estimate_tokens(req.message, req.model),
-                    completion_tokens=estimate_tokens(final_text, req.model)
+                    prompt_tokens=estimate_tokens(req.message, model_name),
+                    completion_tokens=estimate_tokens(final_text, model_name)
                 )
 
                 # Store Assistant Message in DB

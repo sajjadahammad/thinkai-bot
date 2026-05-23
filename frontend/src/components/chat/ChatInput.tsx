@@ -71,7 +71,7 @@ export function ChatInput({
   const modelsList: ModelOption[] = [
     { name: "Mistral Large (Smart)", value: "mistral-large-latest", provider: "mistral" },
     { name: "Gemini 2.5 Flash", value: "gemini-2.5-flash", provider: "gemini" },
-    { name: "Gemini 2.5 Pro", value: "gemini-2.5-pro-preview-06-05", provider: "gemini" },
+    { name: "Gemini 2.5 Pro", value: "gemini-2.5-pro", provider: "gemini" },
     { name: "Mock Chat Model", value: "mock-model", provider: "mock" },
     { name: "GPT-4o (OpenAI)", value: "gpt-4o", provider: "openai", disabled: true },
     { name: "Claude Sonnet 4 (Anthropic)", value: "claude-sonnet-4", provider: "anthropic", disabled: true },

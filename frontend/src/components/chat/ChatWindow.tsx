@@ -12,11 +12,44 @@ interface ChatWindowProps {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
 }
 
+function ThinkingIndicator() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="min-w-[220px] sm:min-w-[280px] pt-1.5 pb-0.5"
+    >
+      <div className="flex items-center gap-2 text-xs text-zinc-300">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400/50 motion-safe:animate-ping" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+        </span>
+        <span className="font-light">Thinking</span>
+        <span className="flex items-end gap-1" aria-hidden="true">
+          {[0, 1, 2].map((dot) => (
+            <span
+              key={dot}
+              className="h-1 w-1 rounded-full bg-zinc-500 motion-safe:animate-bounce"
+              style={{ animationDelay: `${dot * 120}ms` }}
+            />
+          ))}
+        </span>
+      </div>
+
+      <div className="mt-3 space-y-2" aria-hidden="true">
+        <div className="h-2 w-11/12 rounded-full bg-zinc-800/80 motion-safe:animate-pulse" />
+        <div className="h-2 w-8/12 rounded-full bg-zinc-900/70 motion-safe:animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
 export function ChatWindow({ messages, isGenerating, messagesEndRef }: ChatWindowProps) {
   return (
     <div className="flex-1 max-w-3xl w-full flex flex-col space-y-6 relative z-10 pb-24">
       {messages.map((m) => {
         const isUser = m.role === "user";
+        const isThinking = !isUser && !m.content && isGenerating;
         return (
           <div
             key={m.id}
@@ -40,7 +73,7 @@ export function ChatWindow({ messages, isGenerating, messagesEndRef }: ChatWindo
             {/* Content */}
             <div className="space-y-1 overflow-hidden min-w-0 flex-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                {isUser ? "User Query" : "OliveBot Response"}
+                {isUser ? "User Query" : isThinking ? "OliveBot Thinking" : "OliveBot Response"}
               </span>
               {isUser ? (
                 <p className="text-zinc-200 text-xs md:text-sm font-light leading-relaxed whitespace-pre-wrap">
@@ -53,9 +86,7 @@ export function ChatWindow({ messages, isGenerating, messagesEndRef }: ChatWindo
                   </ReactMarkdown>
                 </div>
               ) : (
-                isGenerating && (
-                  <span className="inline-block w-1.5 h-3.5 bg-emerald-400 animate-pulse" />
-                )
+                isThinking && <ThinkingIndicator />
               )}
             </div>
           </div>
@@ -66,4 +97,3 @@ export function ChatWindow({ messages, isGenerating, messagesEndRef }: ChatWindo
   );
 }
 export default ChatWindow;
-

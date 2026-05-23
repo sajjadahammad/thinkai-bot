@@ -94,12 +94,24 @@ class MockChatModel(BaseChatModel):
 # ==========================================
 # 2. LLM Provider Resolver
 # ==========================================
+GEMINI_MODEL_ALIASES = {
+    "gemini-2.5-pro-preview-06-05": "gemini-2.5-pro",
+}
+
+
+def normalize_model_name(provider: str, model_name: str) -> str:
+    if provider.lower() == "gemini":
+        return GEMINI_MODEL_ALIASES.get(model_name, model_name)
+    return model_name
+
+
 def get_llm(provider: str, model_name: str) -> BaseChatModel:
     """
     Returns the appropriate LangChain ChatModel based on provider and model.
     Raises ValueError if API keys are missing for live providers.
     """
     provider = provider.lower()
+    model_name = normalize_model_name(provider, model_name)
     
     if provider == "mistral":
         api_key = settings.MISTRAL_API_KEY.strip() if settings.MISTRAL_API_KEY else ""
